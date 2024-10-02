@@ -1,10 +1,12 @@
 use std::{sync::{Arc, Mutex}, thread, time::Duration};
 
 use mpris::{LoopStatus, PlaybackStatus, PlayerFinder};
-use cushy::{kludgine::{AnyTexture, LazyTexture}, styles::components::WidgetBackground, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::Image, Open, PendingApp};
+use cushy::{kludgine::{AnyTexture, LazyTexture}, styles::{components::WidgetBackground, Color}, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::Image, Open, PendingApp};
+use palette::Srgb;
 use reqwest::Client;
-use image;
+use image::{self, Rgb};
 use tokio::{runtime, task::JoinHandle};
+use crate::vibrancy::Vibrancy;
 
 #[derive(PartialEq)]
 struct PlayingTrack {
@@ -22,7 +24,7 @@ struct PlayingTrack {
 
 pub fn spotify_controls() -> impl MakeWidget {
     let (progress, track) = get_track_dynamics();
-    let texture = get_texture_dynamic(track.clone());
+    let (texture, vibrancy) = get_texture_dynamic(track.clone());
 
     track.map_each(|track| {
         if let Some(track) = track {
@@ -36,10 +38,14 @@ pub fn spotify_controls() -> impl MakeWidget {
         }
     })
         .to_label()
+        .centered()
+        .pad()
         .and(
             Image::new(texture)
         )
         .into_rows()
+        .with(&WidgetBackground, vibrancy.map_each(|vib| vib.dark.unwrap_or(Color::BLACK).into()))
+        .pad()
 }
 
 fn get_empty_texture() -> AnyTexture {
@@ -83,15 +89,27 @@ fn tokio_runtime() -> &'static runtime::Handle {
     })
 }
 
-fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> Dynamic<AnyTexture> {
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct ImageVibrancy {
+    primary: Option<Color>,
+    dark: Option<Color>,
+    light: Option<Color>,
+    muted: Option<Color>,
+    dark_muted: Option<Color>,
+    light_muted: Option<Color>,
+}
+
+fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> (Dynamic<AnyTexture>, Dynamic<ImageVibrancy>) {
     let client = Client::new();
 
 
     let texture = Dynamic::new(get_empty_texture());
+    let vibrancy = Dynamic::new(ImageVibrancy::default());
 
     let prev_request_join = Arc::new(Mutex::new(None::<JoinHandle<()>>));
     track.for_each({
         let texture = texture.clone();
+        let vibrancy = vibrancy.clone();
         move |track| {
             if let Some(track) = track {
                 let mut prev_request_join = prev_request_join.lock().unwrap();
@@ -99,12 +117,22 @@ fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> Dynamic<AnyTextu
                     prev_request_join.abort();
                 }
                 let texture = texture.clone();
+                let vibrancy = vibrancy.clone();
                 let client = client.clone();
                 let track_url = track.album_art.clone().unwrap();
                 *prev_request_join = Some(tokio_runtime().spawn(async move {
                     let response = client.get(track_url).send().await.unwrap();
                     let bytes = response.bytes().await.unwrap();
                     let image = image::load_from_memory(&bytes).unwrap();
+                    let image_vibrancy = Vibrancy::new(&image);
+                    vibrancy.set(ImageVibrancy {
+                        primary: image_vibrancy.primary.map(|c| rgb_to_color(c)),
+                        dark: image_vibrancy.dark.map(|c| rgb_to_color(c)),
+                        light: image_vibrancy.light.map(|c| rgb_to_color(c)),
+                        muted: image_vibrancy.muted.map(|c| rgb_to_color(c)),
+                        dark_muted: image_vibrancy.dark_muted.map(|c| rgb_to_color(c)),
+                        light_muted: image_vibrancy.light_muted.map(|c| rgb_to_color(c)),
+                    });
                     let image_texture = LazyTexture::from_image(image, cushy::kludgine::wgpu::FilterMode::Linear);
                     let image_texture = AnyTexture::Lazy(image_texture);
                     texture.map_mut(move |mut t| *t = image_texture);
@@ -112,12 +140,17 @@ fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> Dynamic<AnyTextu
                 }));
             } else {
                 texture.map_mut(move |mut t| *t = get_empty_texture());
+                vibrancy.set(ImageVibrancy::default());
                 // texture.set(empty_texture);
             }
         }
     }).persist();
 
-    texture
+    (texture, vibrancy)
+}
+
+fn rgb_to_color(rgb: Rgb<u8>) -> Color {
+    Color::new(rgb[0], rgb[1], rgb[2], 255)
 }
 
 /// This spawns a new thread to track the current playing track and its progress.

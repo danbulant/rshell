@@ -1,0 +1,12 @@
+[package]
+name = "barrs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cushy = { version = "0.4.0", features=["tokio", "tokio-multi-thread", "plotters", "roboto-flex"], default-features = false }
+tokio = { version = "1.40.0", features = ["rt", "rt-multi-thread"] }
+plotters = { version = "0.3.7", default-features = false }
+image = { version = "0.25.0", features = ["png"] }
+mpris = "2.0.1"
+reqwest = "0.12.8"

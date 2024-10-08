@@ -59,6 +59,34 @@
                   CARGO_ENCODED_RUSTFLAGS = " ";
                 };
               };
+              rshell = attrs: rec {
+                buildInputs = with pkgs; [
+                  openssl
+                  pkg-config
+                  cmake
+                  zlib
+
+                  # common glutin
+                  libxkbcommon
+                  libGL
+                  dbus
+
+                  # winit wayland
+                  wayland
+
+                  # winit x11
+                  xorg.libXcursor
+                  xorg.libXrandr
+                  xorg.libXi
+                  xorg.libX11
+                ];
+                nativeBuildInputs = with pkgs; [
+                  pkg-config
+                  fontconfig
+                ];
+                LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
+                RUST_SRC_PATH = pkgs.rust.packages.stable.rustPlatform.rustLibSrc;
+              };
             };
           };
         in

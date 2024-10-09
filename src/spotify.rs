@@ -1,9 +1,10 @@
 use std::{sync::{Arc, Mutex}, thread, time::Duration};
 
+use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use mpris::{LoopStatus, PlaybackStatus, PlayerFinder};
-use cushy::{kludgine::{AnyTexture, LazyTexture}, styles::{components::WidgetBackground, Color}, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::Image, Open, PendingApp};
-use palette::Srgb;
+use cushy::{figures::{units::Lp, Size}, kludgine::{AnyTexture, LazyTexture}, styles::{components::WidgetBackground, Color, Dimension, DimensionRange}, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::{image::ImageCornerRadius, Image}};
 use reqwest::Client;
+use reqwest_middleware::ClientBuilder;
 use image::{self, Rgb};
 use tokio::{runtime, task::JoinHandle};
 use crate::vibrancy::Vibrancy;
@@ -22,30 +23,37 @@ struct PlayingTrack {
     loop_status: LoopStatus,
 }
 
+/// Renders spotify control widget, the small one
 pub fn spotify_controls() -> impl MakeWidget {
     let (progress, track) = get_track_dynamics();
     let (texture, vibrancy) = get_texture_dynamic(track.clone());
 
-    track.map_each(|track| {
-        if let Some(track) = track {
-            format!(
-                "{} - {}",
-                track.artist,
-                track.title,
-            )
-        } else {
-            "No track playing".to_string()
-        }
-    })
-        .to_label()
-        .centered()
-        .pad()
-        .and(
-            Image::new(texture)
-        )
-        .into_rows()
-        .with(&WidgetBackground, vibrancy.map_each(|vib| vib.dark.unwrap_or(Color::BLACK).into()))
-        .pad()
+    const IMAGE_SIZE: i32 = 16 /* lineheight */ + 2 * 6 /* padding */ + 8; // Why the 8 there? I don't know, but it works. 
+
+    Image::new(texture)
+        .aspect_fit()
+        // .with(&ImageCornerRadius, Lp::points(6))
+        // default pad is 6, default line height is 16
+        .size(Size::new(DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIZE))), DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIZE)))))
+    .and(
+        track.map_each(|track| {
+            if let Some(track) = track {
+                format!(
+                    "{} - {}",
+                    track.artist,
+                    track.title,
+                )
+            } else {
+                "No track playing".to_string()
+            }
+        })
+            .to_label()
+            .centered()
+            .pad()
+    )
+        .into_columns()
+        .with(&WidgetBackground, Color::CLEAR_WHITE) // vibrancy.map_each(|vib| vib.muted.unwrap_or(Color::BLACK).into()))
+        // .size(Size::new(DimensionRange::default(), DimensionRange::from(Dimension::Lp(Lp::points(28)))))
 }
 
 fn get_empty_texture() -> AnyTexture {
@@ -62,12 +70,6 @@ fn get_empty_texture() -> AnyTexture {
 fn tokio_runtime() -> &'static runtime::Handle {
     use std::sync::OnceLock;
     use std::time::Duration;
-
-    use cushy::value::{Destination, Dynamic};
-    use cushy::widget::MakeWidget;
-    use cushy::widgets::progress::Progressable;
-    use cushy::Run;
-    use tokio::time::sleep;
 
     static RUNTIME: OnceLock<runtime::Handle> = OnceLock::new();
     RUNTIME.get_or_init(|| {
@@ -100,7 +102,13 @@ pub struct ImageVibrancy {
 }
 
 fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> (Dynamic<AnyTexture>, Dynamic<ImageVibrancy>) {
-    let client = Client::new();
+    let client = ClientBuilder::new(Client::new())
+        .with(Cache(HttpCache {
+            mode: CacheMode::Default,
+            manager: CACacheManager::default(),
+            options: HttpCacheOptions::default(),
+        }))
+        .build();
 
 
     let texture = Dynamic::new(get_empty_texture());

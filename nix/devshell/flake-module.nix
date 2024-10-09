@@ -6,7 +6,21 @@
   config.perSystem =
     { pkgs
     , ...
-    }: {
+    }: let
+      packages = with pkgs; [
+        libxkbcommon
+        libGL
+        dbus
+
+        wayland
+
+        xorg.libXcursor
+        xorg.libXrandr
+        xorg.libXi
+        xorg.libX11
+        openssl
+      ];
+    in {
       config.devshells.default = {
         imports = [
           "${inputs.devshell}/extra/language/c.nix"
@@ -16,21 +30,21 @@
         devshell = {
           name = "rshell devshell";
 
-          packages = with pkgs; [
-            libxkbcommon
-            libGL
-            dbus
-
-            wayland
-
-            xorg.libXcursor
-            xorg.libXrandr
-            xorg.libXi
-            xorg.libX11
-            openssl
-            pkg-config
-          ];
+          packages = packages ++ [ pkgs.pkg-config ];
         };
+
+        env = [{
+          name = "LD_LIBRARY_PATH";
+          value = lib.makeLibraryPath packages;
+        } {
+          name = "PKG_CONFIG_PATH";
+          value = lib.concatStringsSep ":"
+            ( map
+              ( pkg: "${pkg.dev}/lib/pkgconfig" )
+              ( packages )
+            );
+          #"${pkgs.openssl.dev}/lib/pkgconfig";
+        }];
 
         commands = with pkgs; [
           { package = rust-toolchain; category = "rust"; }
@@ -38,20 +52,7 @@
 
         language.c = {
           libraries =
-            (with pkgs; [
-              libxkbcommon
-              libGL
-              dbus
-
-              wayland
-
-              xorg.libXcursor
-              xorg.libXrandr
-              xorg.libXi
-              xorg.libX11
-              openssl
-              pkg-config
-            ]) ++
+            packages ++
             (lib.optional pkgs.stdenv.isDarwin pkgs.libiconv);
         };
       };

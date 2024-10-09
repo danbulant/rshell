@@ -92,14 +92,14 @@
         in
         rec {
           checks = {
-            rustnix = cargoNix.rootCrate.build.override {
+            rshell = cargoNix.rootCrate.build.override {
               runTests = true;
             };
           };
 
           packages = {
-            rustnix = cargoNix.rootCrate.build;
-            default = packages.rustnix;
+            rshell = cargoNix.rootCrate.build;
+            default = packages.rshell;
 
             inherit (pkgs) rust-toolchain;
 

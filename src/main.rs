@@ -1,19 +1,13 @@
-use cushy::{styles::{components::DefaultBackgroundColor, Color}, widget::MakeWidget, Open, PendingApp, Run, TokioRuntime};
+use bar::start_bar;
+use cushy::{PendingApp, Run, TokioRuntime};
 
-mod spotify;
 mod vibrancy;
+mod theme;
+mod bar;
 
 fn main() -> cushy::Result {
     let mut app = PendingApp::new(TokioRuntime::default());
-    
-
-    spotify::spotify_controls()
-        .centered()
-        .with(&DefaultBackgroundColor, Color::CLEAR_WHITE)
-        .into_window()
-        .transparent()
-        .app_name("rshell")
-        .open(&mut app)?;
+    start_bar(&mut app)?;
 
     app.run()
 }

@@ -1,0 +1,19 @@
+use cushy::{kludgine::app::winit::window::WindowLevel, widget::MakeWidget, Application, Open};
+
+mod spotify;
+
+pub fn start_bar(app: &mut impl Application) -> cushy::Result {
+    let mut window = spotify::spotify_controls()
+        .pad()
+        .into_window()
+        .transparent()
+        .app_name("rshell")
+        .decorated(false)
+        // .resizable(false)
+        .window_level(WindowLevel::AlwaysOnTop);
+
+    window.sans_serif_font_family.push(cushy::styles::FamilyOwned::Name("Iosevka NF".into()));
+
+    window
+        .open(app).map(|_| ())
+}

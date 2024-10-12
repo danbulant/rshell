@@ -2,12 +2,12 @@ use std::{sync::{Arc, Mutex}, thread, time::Duration};
 
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use mpris::{LoopStatus, PlaybackStatus, PlayerFinder};
-use cushy::{figures::{units::Lp, Size}, kludgine::{AnyTexture, LazyTexture}, styles::{components::WidgetBackground, Color, Dimension, DimensionRange}, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::{image::ImageCornerRadius, Image}};
+use cushy::{figures::{units::Lp, Size, Zero}, kludgine::{AnyTexture, LazyTexture}, styles::{components::{FontWeight, TextColor, WidgetBackground}, Color, CornerRadii, Dimension, DimensionRange, Weight}, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::{image::ImageCornerRadius, Image}};
 use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
-use image::{self, Rgb};
+use image::{self, imageops::FilterType, Rgb};
 use tokio::{runtime, task::JoinHandle};
-use crate::vibrancy::Vibrancy;
+use crate::{theme::{BG_DEFAULT, TEXT_SPOTIFY}, vibrancy::Vibrancy};
 
 #[derive(PartialEq)]
 struct PlayingTrack {
@@ -28,13 +28,20 @@ pub fn spotify_controls() -> impl MakeWidget {
     let (progress, track) = get_track_dynamics();
     let (texture, vibrancy) = get_texture_dynamic(track.clone());
 
-    const IMAGE_SIZE: i32 = 16 /* lineheight */ + 2 * 6 /* padding */ + 8; // Why the 8 there? I don't know, but it works. 
+    const IMAGE_SIDE: i32 = 16 /* lineheight */ + 2 * 6 /* padding */;
+    let image_size = Size::squared(DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIDE))));
+    const CORNER_RADIUS: Dimension = Dimension::Lp(Lp::points(6));
 
     Image::new(texture)
         .aspect_fit()
-        // .with(&ImageCornerRadius, Lp::points(6))
+        .with(&ImageCornerRadius, CornerRadii {
+            top_left: CORNER_RADIUS,
+            top_right: Dimension::ZERO,
+            bottom_left: CORNER_RADIUS,
+            bottom_right: Dimension::ZERO,
+        })
         // default pad is 6, default line height is 16
-        .size(Size::new(DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIZE))), DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIZE)))))
+        .size(image_size)
     .and(
         track.map_each(|track| {
             if let Some(track) = track {
@@ -48,12 +55,14 @@ pub fn spotify_controls() -> impl MakeWidget {
             }
         })
             .to_label()
+            .with(&TextColor, TEXT_SPOTIFY)
+            .with(&FontWeight, Weight::BOLD)
             .centered()
             .pad()
     )
         .into_columns()
-        .with(&WidgetBackground, Color::CLEAR_WHITE) // vibrancy.map_each(|vib| vib.muted.unwrap_or(Color::BLACK).into()))
-        // .size(Size::new(DimensionRange::default(), DimensionRange::from(Dimension::Lp(Lp::points(28)))))
+        .with(&WidgetBackground, BG_DEFAULT)
+        // .with(&WidgetBackground, vibrancy.map_each(|vib| vib.primary.unwrap_or(Color::BLACK).into()))
 }
 
 fn get_empty_texture() -> AnyTexture {
@@ -132,6 +141,7 @@ fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> (Dynamic<AnyText
                     let response = client.get(track_url).send().await.unwrap();
                     let bytes = response.bytes().await.unwrap();
                     let image = image::load_from_memory(&bytes).unwrap();
+                    let image = image.resize(128, 128, FilterType::Lanczos3);
                     let image_vibrancy = Vibrancy::new(&image);
                     vibrancy.set(ImageVibrancy {
                         primary: image_vibrancy.primary.map(|c| rgb_to_color(c)),
@@ -143,13 +153,11 @@ fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> (Dynamic<AnyText
                     });
                     let image_texture = LazyTexture::from_image(image, cushy::kludgine::wgpu::FilterMode::Linear);
                     let image_texture = AnyTexture::Lazy(image_texture);
-                    texture.map_mut(move |mut t| *t = image_texture);
-                    // texture.set(image_texture);
+                    texture.set(image_texture);
                 }));
             } else {
-                texture.map_mut(move |mut t| *t = get_empty_texture());
                 vibrancy.set(ImageVibrancy::default());
-                // texture.set(empty_texture);
+                texture.set(get_empty_texture());
             }
         }
     }).persist();

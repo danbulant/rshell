@@ -5,14 +5,14 @@ use std::{
 };
 
 use crate::{
-    theme::{BG_DEFAULT, TEXT_SPOTIFY},
+    theme::{BG_DEFAULT, CORNER_RADIUS, TEXT_SPOTIFY},
     vibrancy::Vibrancy,
 };
 use cushy::{
     figures::{units::Lp, Size, Zero},
     kludgine::{AnyTexture, LazyTexture},
     styles::{
-        components::{FontWeight, TextColor, WidgetBackground},
+        components::{FontWeight, LineHeight, TextColor, TextSize, WidgetBackground},
         Color, CornerRadii, Dimension, DimensionRange, Weight,
     },
     value::{Destination, Dynamic, Source},
@@ -45,9 +45,8 @@ pub fn spotify_controls() -> impl MakeWidget {
     let (progress, track) = get_track_dynamics();
     let (texture, vibrancy) = get_texture_dynamic(track.clone());
 
-    const IMAGE_SIDE: i32 = 16 /* lineheight */ + 2 * 6 /* padding */;
+    const IMAGE_SIDE: i32 = 10 /* lineheight */ + 2 * 6 /* padding */;
     let image_size = Size::squared(DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIDE))));
-    const CORNER_RADIUS: Dimension = Dimension::Lp(Lp::points(6));
 
     Image::new(texture)
         .aspect_fit()
@@ -73,7 +72,9 @@ pub fn spotify_controls() -> impl MakeWidget {
                 })
                 .into_label()
                 .with(&TextColor, TEXT_SPOTIFY)
-                .with(&FontWeight, Weight::BOLD)
+                // .with(&FontWeight, Weight::BOLD)
+                .with(&TextSize, Dimension::Lp(Lp::points(10)))
+                .with(&LineHeight, Dimension::Lp(Lp::points(10)))
                 .centered()
                 .pad(),
         )

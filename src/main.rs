@@ -4,11 +4,11 @@ use cli::{Args, Commands};
 use cushy::{PendingApp, Run, TokioRuntime};
 use menu::start_menu;
 
-mod vibrancy;
-mod theme;
 mod bar;
 mod cli;
 mod menu;
+mod theme;
+mod vibrancy;
 
 fn main() -> cushy::Result {
     let args = Args::parse();
@@ -20,5 +20,6 @@ fn main() -> cushy::Result {
         Commands::Power => todo!(),
     }
 
+    // Ok(())
     app.run()
 }

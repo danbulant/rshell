@@ -1,13 +1,30 @@
-use std::{sync::{Arc, Mutex}, thread, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
+use crate::{
+    theme::{BG_DEFAULT, TEXT_SPOTIFY},
+    vibrancy::Vibrancy,
+};
+use cushy::{
+    figures::{units::Lp, Size, Zero},
+    kludgine::{AnyTexture, LazyTexture},
+    styles::{
+        components::{FontWeight, TextColor, WidgetBackground},
+        Color, CornerRadii, Dimension, DimensionRange, Weight,
+    },
+    value::{Destination, Dynamic, Source},
+    widget::MakeWidget,
+    widgets::{image::ImageCornerRadius, label::Displayable, Image},
+};
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
+use image::{self, imageops::FilterType, Rgb};
 use mpris::{LoopStatus, PlaybackStatus, PlayerFinder};
-use cushy::{figures::{units::Lp, Size, Zero}, kludgine::{AnyTexture, LazyTexture}, styles::{components::{FontWeight, TextColor, WidgetBackground}, Color, CornerRadii, Dimension, DimensionRange, Weight}, value::{Destination, Dynamic, IntoReader, Source}, widget::MakeWidget, widgets::{image::ImageCornerRadius, Image}};
 use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
-use image::{self, imageops::FilterType, Rgb};
 use tokio::{runtime, task::JoinHandle};
-use crate::{theme::{BG_DEFAULT, TEXT_SPOTIFY}, vibrancy::Vibrancy};
 
 #[derive(PartialEq)]
 struct PlayingTrack {
@@ -34,46 +51,42 @@ pub fn spotify_controls() -> impl MakeWidget {
 
     Image::new(texture)
         .aspect_fit()
-        .with(&ImageCornerRadius, CornerRadii {
-            top_left: CORNER_RADIUS,
-            top_right: Dimension::ZERO,
-            bottom_left: CORNER_RADIUS,
-            bottom_right: Dimension::ZERO,
-        })
+        .with(
+            &ImageCornerRadius,
+            CornerRadii {
+                top_left: CORNER_RADIUS,
+                top_right: Dimension::ZERO,
+                bottom_left: CORNER_RADIUS,
+                bottom_right: Dimension::ZERO,
+            },
+        )
         // default pad is 6, default line height is 16
         .size(image_size)
-    .and(
-        track.map_each(|track| {
-            if let Some(track) = track {
-                format!(
-                    "{} - {}",
-                    track.artist,
-                    track.title,
-                )
-            } else {
-                "No track playing".to_string()
-            }
-        })
-            .to_label()
-            .with(&TextColor, TEXT_SPOTIFY)
-            .with(&FontWeight, Weight::BOLD)
-            .centered()
-            .pad()
-    )
+        .and(
+            track
+                .map_each(|track| {
+                    if let Some(track) = track {
+                        format!("{} - {}", track.artist, track.title,)
+                    } else {
+                        "No track playing".to_string()
+                    }
+                })
+                .into_label()
+                .with(&TextColor, TEXT_SPOTIFY)
+                .with(&FontWeight, Weight::BOLD)
+                .centered()
+                .pad(),
+        )
         .into_columns()
         .with(&WidgetBackground, BG_DEFAULT)
-        // .with(&WidgetBackground, vibrancy.map_each(|vib| vib.primary.unwrap_or(Color::BLACK).into()))
+    // .with(&WidgetBackground, vibrancy.map_each(|vib| vib.primary.unwrap_or(Color::BLACK).into()))
 }
 
 fn get_empty_texture() -> AnyTexture {
-    AnyTexture::Lazy(
-        LazyTexture::from_image(
-            image::DynamicImage::ImageRgba8(
-                image::ImageBuffer::new(1, 1)
-            ),
-            cushy::kludgine::wgpu::FilterMode::Linear
-        )
-    )
+    AnyTexture::Lazy(LazyTexture::from_image(
+        image::DynamicImage::ImageRgba8(image::ImageBuffer::new(1, 1)),
+        cushy::kludgine::wgpu::FilterMode::Linear,
+    ))
 }
 
 fn tokio_runtime() -> &'static runtime::Handle {
@@ -110,7 +123,9 @@ pub struct ImageVibrancy {
     light_muted: Option<Color>,
 }
 
-fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> (Dynamic<AnyTexture>, Dynamic<ImageVibrancy>) {
+fn get_texture_dynamic(
+    track: Dynamic<Option<PlayingTrack>>,
+) -> (Dynamic<AnyTexture>, Dynamic<ImageVibrancy>) {
     let client = ClientBuilder::new(Client::new())
         .with(Cache(HttpCache {
             mode: CacheMode::Default,
@@ -119,48 +134,52 @@ fn get_texture_dynamic(track: Dynamic<Option<PlayingTrack>>) -> (Dynamic<AnyText
         }))
         .build();
 
-
     let texture = Dynamic::new(get_empty_texture());
     let vibrancy = Dynamic::new(ImageVibrancy::default());
 
     let prev_request_join = Arc::new(Mutex::new(None::<JoinHandle<()>>));
-    track.for_each({
-        let texture = texture.clone();
-        let vibrancy = vibrancy.clone();
-        move |track| {
-            if let Some(track) = track {
-                let mut prev_request_join = prev_request_join.lock().unwrap();
-                if let Some(prev_request_join) = prev_request_join.take() {
-                    prev_request_join.abort();
+    track
+        .for_each({
+            let texture = texture.clone();
+            let vibrancy = vibrancy.clone();
+            move |track| {
+                if let Some(track) = track {
+                    let mut prev_request_join = prev_request_join.lock().unwrap();
+                    if let Some(prev_request_join) = prev_request_join.take() {
+                        prev_request_join.abort();
+                    }
+                    let texture = texture.clone();
+                    let vibrancy = vibrancy.clone();
+                    let client = client.clone();
+                    let track_url = track.album_art.clone().unwrap();
+                    *prev_request_join = Some(tokio_runtime().spawn(async move {
+                        let response = client.get(track_url).send().await.unwrap();
+                        let bytes = response.bytes().await.unwrap();
+                        let image = image::load_from_memory(&bytes).unwrap();
+                        let image = image.resize(128, 128, FilterType::Lanczos3);
+                        let image_vibrancy = Vibrancy::new(&image);
+                        vibrancy.set(ImageVibrancy {
+                            primary: image_vibrancy.primary.map(|c| rgb_to_color(c)),
+                            dark: image_vibrancy.dark.map(|c| rgb_to_color(c)),
+                            light: image_vibrancy.light.map(|c| rgb_to_color(c)),
+                            muted: image_vibrancy.muted.map(|c| rgb_to_color(c)),
+                            dark_muted: image_vibrancy.dark_muted.map(|c| rgb_to_color(c)),
+                            light_muted: image_vibrancy.light_muted.map(|c| rgb_to_color(c)),
+                        });
+                        let image_texture = LazyTexture::from_image(
+                            image,
+                            cushy::kludgine::wgpu::FilterMode::Linear,
+                        );
+                        let image_texture = AnyTexture::Lazy(image_texture);
+                        texture.set(image_texture);
+                    }));
+                } else {
+                    vibrancy.set(ImageVibrancy::default());
+                    texture.set(get_empty_texture());
                 }
-                let texture = texture.clone();
-                let vibrancy = vibrancy.clone();
-                let client = client.clone();
-                let track_url = track.album_art.clone().unwrap();
-                *prev_request_join = Some(tokio_runtime().spawn(async move {
-                    let response = client.get(track_url).send().await.unwrap();
-                    let bytes = response.bytes().await.unwrap();
-                    let image = image::load_from_memory(&bytes).unwrap();
-                    let image = image.resize(128, 128, FilterType::Lanczos3);
-                    let image_vibrancy = Vibrancy::new(&image);
-                    vibrancy.set(ImageVibrancy {
-                        primary: image_vibrancy.primary.map(|c| rgb_to_color(c)),
-                        dark: image_vibrancy.dark.map(|c| rgb_to_color(c)),
-                        light: image_vibrancy.light.map(|c| rgb_to_color(c)),
-                        muted: image_vibrancy.muted.map(|c| rgb_to_color(c)),
-                        dark_muted: image_vibrancy.dark_muted.map(|c| rgb_to_color(c)),
-                        light_muted: image_vibrancy.light_muted.map(|c| rgb_to_color(c)),
-                    });
-                    let image_texture = LazyTexture::from_image(image, cushy::kludgine::wgpu::FilterMode::Linear);
-                    let image_texture = AnyTexture::Lazy(image_texture);
-                    texture.set(image_texture);
-                }));
-            } else {
-                vibrancy.set(ImageVibrancy::default());
-                texture.set(get_empty_texture());
             }
-        }
-    }).persist();
+        })
+        .persist();
 
     (texture, vibrancy)
 }

@@ -4,10 +4,15 @@ use cushy::{
         Size,
     },
     kludgine::app::winit::{platform::wayland::Anchor, window::WindowLevel},
+    styles::components::{
+        BaseLineHeight, BaseTextSize, CornerRadius, DefaultBackgroundColor, FontWeight,
+    },
     value::Dynamic,
     widget::MakeWidget,
     Application, Open,
 };
+
+use crate::theme::{BG_DEFAULT, CORNER_RADIUS, DEFAULT_FONT_WEIGHT, TEXT_SIZE};
 
 mod spotify;
 mod time;
@@ -23,6 +28,11 @@ pub fn start_bar(app: &mut impl Application) -> cushy::Result {
         .centered()
         .expand_horizontally()
         .height(Lp::points(30))
+        .with(&BaseTextSize, TEXT_SIZE)
+        .with(&BaseLineHeight, TEXT_SIZE)
+        .with(&DefaultBackgroundColor, BG_DEFAULT)
+        .with(&CornerRadius, CORNER_RADIUS)
+        .with(&FontWeight, DEFAULT_FONT_WEIGHT)
         .into_window()
         .inner_size(size.clone())
         .titled("rshell")

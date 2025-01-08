@@ -6,15 +6,15 @@ use std::{
 
 use crate::{
     rt::tokio_runtime,
-    theme::{BG_DEFAULT, CORNER_RADIUS, TEXT_SPOTIFY},
+    theme::{BG_DEFAULT, CORNER_RADIUS, TEXT_SPOTIFY, WIDGET_PADDING},
     vibrancy::Vibrancy,
 };
 use cushy::{
     figures::{units::Lp, Size, Zero},
     kludgine::{AnyTexture, LazyTexture},
     styles::{
-        components::{FontWeight, LineHeight, TextColor, TextSize, WidgetBackground},
-        Color, CornerRadii, Dimension, DimensionRange, Weight,
+        components::{TextColor, WidgetBackground},
+        Color, CornerRadii, Dimension, DimensionRange,
     },
     value::{Destination, Dynamic, Source},
     widget::MakeWidget,
@@ -25,7 +25,7 @@ use image::{self, imageops::FilterType, Rgb};
 use mpris::{LoopStatus, PlaybackStatus, PlayerFinder};
 use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
-use tokio::{runtime, task::JoinHandle};
+use tokio::task::JoinHandle;
 
 #[derive(PartialEq)]
 struct PlayingTrack {
@@ -43,8 +43,8 @@ struct PlayingTrack {
 
 /// Renders spotify control widget, the small one
 pub fn spotify_controls() -> impl MakeWidget {
-    let (progress, track) = get_track_dynamics();
-    let (texture, vibrancy) = get_texture_dynamic(track.clone());
+    let (_progress, track) = get_track_dynamics();
+    let (texture, _vibrancy) = get_texture_dynamic(track.clone());
 
     const IMAGE_SIDE: i32 = 10 /* lineheight */ + 2 * 6 /* padding */;
     let image_size = Size::squared(DimensionRange::from(Dimension::Lp(Lp::points(IMAGE_SIDE))));
@@ -73,11 +73,11 @@ pub fn spotify_controls() -> impl MakeWidget {
                 })
                 .into_label()
                 .with(&TextColor, TEXT_SPOTIFY)
-                .with(&FontWeight, Weight::BOLD)
-                .with(&TextSize, Dimension::Lp(Lp::points(8)))
-                .with(&LineHeight, Dimension::Lp(Lp::points(10)))
+                // .with(&FontWeight, Weight::BOLD)
+                // .with(&TextSize, TEXT_SIZE)
+                // .with(&LineHeight, TEXT_SIZE)
                 .centered()
-                .pad(),
+                .pad_by(WIDGET_PADDING),
         )
         .into_columns()
         .with(&WidgetBackground, BG_DEFAULT)

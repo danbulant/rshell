@@ -7,11 +7,11 @@ use cushy::{
 
 use crate::{
     rt::tokio_runtime,
-    theme::{BG_DEFAULT, TEXT_CLOCK},
+    theme::{BG_DEFAULT, TEXT_CLOCK, WIDGET_PADDING},
 };
 
-const FORMAT: &'static str = "  %H:%M %p 󰃭  %a %d";
-const FORMAT_ALT: &'static str = "  %H:%M  %b %Y";
+const FORMAT: &'static str = "  %H:%M %p 󰃭  %a %d ";
+const FORMAT_ALT: &'static str = "  %H:%M  %b %Y ";
 
 const CLOCK_ICONS: [&'static str; 12] =
     ["", "", "", "", "", "", "", "", "", "", "", ""];
@@ -39,10 +39,11 @@ pub fn time_widget() -> impl MakeWidget {
                 false => (&CLOCK_ICONS, FORMAT),
             };
             let icon = icon_set[current_time.hour12().1 as usize % 12].to_string();
+            let icon = " ".to_string() + &icon;
             icon + &current_time.format(format).to_string()
         })
         .with(&TextColor, TEXT_CLOCK)
-        .pad()
+        .pad_by(WIDGET_PADDING)
         .centered()
         .with(&WidgetBackground, BG_DEFAULT)
 }

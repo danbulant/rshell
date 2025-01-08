@@ -7,6 +7,7 @@ use menu::start_menu;
 mod bar;
 mod cli;
 mod menu;
+pub mod rt;
 mod theme;
 mod vibrancy;
 
@@ -14,11 +15,11 @@ fn main() -> cushy::Result {
     let args = Args::parse();
     let mut app = PendingApp::new(TokioRuntime::default());
 
-    match args.cmd {
-        Commands::Bar => start_bar(&mut app)?,
-        Commands::Menu => start_menu(&mut app)?,
+    app.on_startup(move |app| match args.cmd {
+        Commands::Bar => start_bar(app).unwrap(),
+        Commands::Menu => start_menu(app).unwrap(),
         Commands::Power => todo!(),
-    }
+    });
 
     // Ok(())
     app.run()

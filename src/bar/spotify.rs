@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    rt::tokio_runtime,
     theme::{BG_DEFAULT, CORNER_RADIUS, TEXT_SPOTIFY},
     vibrancy::Vibrancy,
 };
@@ -72,8 +73,8 @@ pub fn spotify_controls() -> impl MakeWidget {
                 })
                 .into_label()
                 .with(&TextColor, TEXT_SPOTIFY)
-                // .with(&FontWeight, Weight::BOLD)
-                .with(&TextSize, Dimension::Lp(Lp::points(10)))
+                .with(&FontWeight, Weight::BOLD)
+                .with(&TextSize, Dimension::Lp(Lp::points(8)))
                 .with(&LineHeight, Dimension::Lp(Lp::points(10)))
                 .centered()
                 .pad(),
@@ -88,30 +89,6 @@ fn get_empty_texture() -> AnyTexture {
         image::DynamicImage::ImageRgba8(image::ImageBuffer::new(1, 1)),
         cushy::kludgine::wgpu::FilterMode::Linear,
     ))
-}
-
-fn tokio_runtime() -> &'static runtime::Handle {
-    use std::sync::OnceLock;
-    use std::time::Duration;
-
-    static RUNTIME: OnceLock<runtime::Handle> = OnceLock::new();
-    RUNTIME.get_or_init(|| {
-        let rt = runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .expect("tokio initialization error");
-        let handle = rt.handle().clone();
-        std::thread::spawn(move || {
-            // Replace with the async main loop, or some sync structure to
-            // control shutting it down if desired.
-            rt.block_on(async {
-                loop {
-                    tokio::time::sleep(Duration::from_secs(10000)).await
-                }
-            });
-        });
-        handle
-    })
 }
 
 #[derive(Debug, PartialEq, Eq, Default)]

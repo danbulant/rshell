@@ -45,5 +45,4 @@ pub fn time_widget() -> impl MakeWidget {
         .with(&TextColor, TEXT_CLOCK)
         .pad_by(WIDGET_PADDING)
         .centered()
-        .with(&WidgetBackground, BG_DEFAULT)
 }

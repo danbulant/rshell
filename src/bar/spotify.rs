@@ -80,7 +80,6 @@ pub fn spotify_controls() -> impl MakeWidget {
                 .pad_by(WIDGET_PADDING),
         )
         .into_columns()
-        .with(&WidgetBackground, BG_DEFAULT)
     // .with(&WidgetBackground, vibrancy.map_each(|vib| vib.primary.unwrap_or(Color::BLACK).into()))
 }
 

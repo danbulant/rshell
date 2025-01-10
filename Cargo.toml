@@ -28,9 +28,15 @@ fuzzy-matcher = "0.3.5"
 freedesktop-desktop-entry = "0.7.5"
 which = "7.0.1"
 chrono = "0.4.39"
+hyprland = "0.4.0-beta.2"
+pipewire = "0.8.0"
+networkmanager = "0.4"
+dbus = "0.9"
+battery = "0.7.8"
 
 [patch.crates-io]
 winit = { path = "../winit" }
+# winit = { git = "https://github.com/danbulant/winit", branch = "ls_release" }
 
 [profile.release]
 debug = true

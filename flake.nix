@@ -45,7 +45,7 @@
 
       perSystem = { system, pkgs, lib, inputs', ... }:
         let
-          # If you dislike IFD, you can also generate it with `crate2nix generate` 
+          # If you dislike IFD, you can also generate it with `crate2nix generate`
           # on each dependency change and import it here with `import ./Cargo.nix`.
           # cargoNix = inputs.crate2nix.tools.${system}.appliedCargoNix {
           #   name = "rustnix";
@@ -63,6 +63,7 @@
                 buildInputs = with pkgs; [
                   openssl
                   pkg-config
+                  fontconfig
                   cmake
                   zlib
 
@@ -74,15 +75,13 @@
                   # winit wayland
                   wayland
 
-                  # winit x11
-                  xorg.libXcursor
-                  xorg.libXrandr
-                  xorg.libXi
-                  xorg.libX11
+                  # data gathering
+                  pipewire.dev
+                  networkmanager
                 ];
                 nativeBuildInputs = with pkgs; [
                   pkg-config
-                  fontconfig
+                  rustPlatform.bindgenHook
                 ];
                 LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
                 RUST_SRC_PATH = pkgs.rust.packages.stable.rustPlatform.rustLibSrc;

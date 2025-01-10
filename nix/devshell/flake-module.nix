@@ -14,11 +14,13 @@
 
         wayland
 
-        xorg.libXcursor
-        xorg.libXrandr
-        xorg.libXi
-        xorg.libX11
         openssl
+        libclang
+        glib
+
+        # data gathering
+        pipewire.dev
+        networkmanager
       ];
     in {
       config.devshells.default = {
@@ -30,12 +32,19 @@
         devshell = {
           name = "rshell devshell";
 
-          packages = packages ++ [ pkgs.pkg-config ];
+          packages = packages ++ (with pkgs;[ pkg-config rustPlatform.bindgenHook rust-cbindgen autoAddDriverRunpath clang ]);
+          packagesFrom = with pkgs; [libclang clang libclang.lib];
         };
 
         env = [{
           name = "LD_LIBRARY_PATH";
           value = lib.makeLibraryPath packages;
+        } {
+          name = "LDFLAGS";
+          eval = "-L$DEVSHELL_DIR/lib";
+        } {
+          name = "C_INCLUDE_PATH";
+          prefix = "$DEVSHELL_DIR/include";
         } {
           name = "PKG_CONFIG_PATH";
           value = lib.concatStringsSep ":"
@@ -44,6 +53,14 @@
               ( packages )
             );
           #"${pkgs.openssl.dev}/lib/pkgconfig";
+        } {
+          name = "LIBCLANG_PATH";
+          value = "${pkgs.libclang.lib}/lib";
+        } {
+          # some *-sys crates require additional includes
+          name = "CFLAGS";
+          # append in case it needs to be modified
+          eval = "\"-I $DEVSHELL_DIR/include ${lib.optionalString pkgs.stdenv.isDarwin "-iframework $DEVSHELL_DIR/Library/Frameworks"}\"";
         }];
 
         commands = with pkgs; [

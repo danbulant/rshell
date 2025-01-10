@@ -12,7 +12,7 @@ pub const WIDGET_PADDING: Edges<Dimension> = Edges {
     bottom: Dimension::Px(Px::new(3)),
 };
 
-pub const DEFAULT_FONT_WEIGHT: Weight = Weight::BOLD;
+pub const DEFAULT_FONT_WEIGHT: Weight = Weight::MEDIUM;
 
 pub const BG_DEFAULT: Color = Color(0x191724FF);
 pub const TEXT_SPOTIFY: Color = Color(0x1DB954FF);
@@ -20,3 +20,11 @@ pub const TEXT_CLOCK: Color = Color(0xF6C177FF);
 pub const TEXT_CPU: Color = Color(0xff671fFF);
 pub const TEXT_MEM: Color = Color(0x1DB954FF);
 pub const TEXT_TEMP: Color = Color(0x97f993FF);
+
+pub const TEXT_FONT: [&str; 5] = [
+    "Inter",
+    "Iosevka",
+    "Iosevka NF",
+    "Fira Code Retina",
+    "FiraCode Nerd Font Mono",
+];

@@ -4,15 +4,18 @@ use cushy::{
         Size,
     },
     kludgine::app::winit::{platform::wayland::Anchor, window::WindowLevel},
-    styles::components::{
-        BaseLineHeight, BaseTextSize, CornerRadius, DefaultBackgroundColor, FontWeight,
+    styles::{
+        components::{
+            BaseLineHeight, BaseTextSize, CornerRadius, DefaultBackgroundColor, FontWeight,
+        },
+        FontFamilyList,
     },
     value::Dynamic,
     widget::MakeWidget,
     Application, Open,
 };
 
-use crate::theme::{BG_DEFAULT, CORNER_RADIUS, DEFAULT_FONT_WEIGHT, TEXT_SIZE};
+use crate::theme::{BG_DEFAULT, CORNER_RADIUS, DEFAULT_FONT_WEIGHT, TEXT_FONT, TEXT_SIZE};
 
 mod spotify;
 mod time;
@@ -42,9 +45,12 @@ pub fn start_bar(app: &mut impl Application) -> cushy::Result {
         .resize_to_fit(false)
         .window_level(WindowLevel::AlwaysOnTop);
 
-    window
-        .sans_serif_font_family
-        .push(cushy::styles::FamilyOwned::Name("Iosevka NF".into()));
+    let mut family = FontFamilyList::default();
+    for font in TEXT_FONT.iter() {
+        family.push(cushy::styles::FamilyOwned::Name((*font).into()));
+    }
+
+    window.sans_serif_font_family = family;
 
     window.open(app).map(|handle| {
         handle.execute(move |ctx| {

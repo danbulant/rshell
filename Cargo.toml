@@ -33,6 +33,7 @@ pipewire = "0.8.0"
 networkmanager = "0.4"
 dbus = "0.9"
 battery = "0.7.8"
+systemstat = "0.2.4"
 
 [patch.crates-io]
 winit = { path = "../winit" }

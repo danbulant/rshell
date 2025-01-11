@@ -125,32 +125,33 @@ fn get_texture_dynamic(
                     let texture = texture.clone();
                     let vibrancy = vibrancy.clone();
                     let client = client.clone();
-                    let track_url = track.album_art.clone().unwrap();
-                    *prev_request_join = Some(tokio_runtime().spawn(async move {
-                        let response = client.get(track_url).send().await.unwrap();
-                        let bytes = response.bytes().await.unwrap();
-                        let image = image::load_from_memory(&bytes).unwrap();
-                        let image = image.resize(128, 128, FilterType::Lanczos3);
-                        let image_vibrancy = Vibrancy::new(&image);
-                        vibrancy.set(ImageVibrancy {
-                            primary: image_vibrancy.primary.map(|c| rgb_to_color(c)),
-                            dark: image_vibrancy.dark.map(|c| rgb_to_color(c)),
-                            light: image_vibrancy.light.map(|c| rgb_to_color(c)),
-                            muted: image_vibrancy.muted.map(|c| rgb_to_color(c)),
-                            dark_muted: image_vibrancy.dark_muted.map(|c| rgb_to_color(c)),
-                            light_muted: image_vibrancy.light_muted.map(|c| rgb_to_color(c)),
-                        });
-                        let image_texture = LazyTexture::from_image(
-                            image,
-                            cushy::kludgine::wgpu::FilterMode::Linear,
-                        );
-                        let image_texture = AnyTexture::Lazy(image_texture);
-                        texture.set(image_texture);
-                    }));
-                } else {
-                    vibrancy.set(ImageVibrancy::default());
-                    texture.set(get_empty_texture());
+                    if let Some(track_url) = track.album_art.clone() {
+                        *prev_request_join = Some(tokio_runtime().spawn(async move {
+                            let response = client.get(track_url).send().await.unwrap();
+                            let bytes = response.bytes().await.unwrap();
+                            let image = image::load_from_memory(&bytes).unwrap();
+                            let image = image.resize(128, 128, FilterType::Lanczos3);
+                            let image_vibrancy = Vibrancy::new(&image);
+                            vibrancy.set(ImageVibrancy {
+                                primary: image_vibrancy.primary.map(|c| rgb_to_color(c)),
+                                dark: image_vibrancy.dark.map(|c| rgb_to_color(c)),
+                                light: image_vibrancy.light.map(|c| rgb_to_color(c)),
+                                muted: image_vibrancy.muted.map(|c| rgb_to_color(c)),
+                                dark_muted: image_vibrancy.dark_muted.map(|c| rgb_to_color(c)),
+                                light_muted: image_vibrancy.light_muted.map(|c| rgb_to_color(c)),
+                            });
+                            let image_texture = LazyTexture::from_image(
+                                image,
+                                cushy::kludgine::wgpu::FilterMode::Linear,
+                            );
+                            let image_texture = AnyTexture::Lazy(image_texture);
+                            texture.set(image_texture);
+                        }));
+                        return;
+                    }
                 }
+                vibrancy.set(ImageVibrancy::default());
+                texture.set(get_empty_texture());
             }
         })
         .persist();

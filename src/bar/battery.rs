@@ -1,12 +1,38 @@
-use battery::State;
-use cushy::{styles::components::TextColor, widget::MakeWidget};
+use battery::{Battery, State};
+use cushy::{
+    styles::components::TextColor,
+    value::{Destination, Dynamic},
+    widget::MakeWidget,
+};
 
-use crate::theme::{TEXT_BATTERY, WIDGET_PADDING};
+use crate::{
+    rt::tokio_runtime,
+    theme::{TEXT_BATTERY, WIDGET_PADDING},
+};
 
 const BATTERY_LOW: &str = "󱃍";
 
 const BATTERY_CHARGING: [&str; 11] = ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"];
 const BATTERY_NORMAL: [&str; 11] = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"];
+
+const BATTERY_UNKNOWN: &str = "󰂑";
+const BATTERY_FULL: &str = "󱟢";
+
+fn format_battery(battery: &Battery) -> String {
+    let state = battery.state();
+    let charge = battery.state_of_charge();
+
+    let icon = match state {
+        State::Charging => BATTERY_CHARGING[(charge.value * 10.) as usize],
+        State::Discharging => BATTERY_NORMAL[(charge.value * 10.) as usize],
+        State::Empty => BATTERY_LOW,
+        State::Full => BATTERY_FULL,
+        State::Unknown | _ => BATTERY_UNKNOWN,
+    };
+
+    let percent = (charge.value * 100.) as u8;
+    format!(" {} {}% ", icon, percent)
+}
 
 pub fn battery() -> impl MakeWidget {
     let manager = battery::Manager::new();
@@ -36,22 +62,33 @@ pub fn battery() -> impl MakeWidget {
     let Some(Ok(battery)) = batteries.next() else {
         return "".make_widget();
     };
+    let info = Dynamic::new(format_battery(&battery));
 
-    let state = battery.state();
-    let charge = battery.state_of_charge();
+    tokio_runtime().spawn({
+        let info = info.clone();
+        async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+            loop {
+                interval.tick().await;
 
-    let icon = match state {
-        State::Charging => BATTERY_CHARGING[(charge.value * 10.) as usize],
-        State::Discharging => BATTERY_NORMAL[(charge.value * 10.) as usize],
-        State::Empty => BATTERY_LOW,
-        State::Full => "󱟢",
-        State::Unknown | _ => "󰂑",
-    };
+                let Ok(manager) = battery::Manager::new() else {
+                    info.set(BATTERY_UNKNOWN.to_string());
+                    return;
+                };
+                let Ok(mut batteries) = manager.batteries() else {
+                    info.set(BATTERY_UNKNOWN.to_string());
+                    return;
+                };
+                let Some(Ok(battery)) = batteries.next() else {
+                    info.set(BATTERY_UNKNOWN.to_string());
+                    return;
+                };
+                info.set(format_battery(&battery));
+            }
+        }
+    });
 
-    let percent = (charge.value * 100.) as u8;
-
-    format!(" {} {}% ", icon, percent)
-        .with(&TextColor, TEXT_BATTERY)
+    info.with(&TextColor, TEXT_BATTERY)
         .pad_by(WIDGET_PADDING)
         .centered()
         .make_widget()

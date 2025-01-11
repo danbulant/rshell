@@ -1,7 +1,7 @@
 use battery::State;
 use cushy::{styles::components::TextColor, widget::MakeWidget};
 
-use crate::theme::{TEXT_BATTERY, TEXT_TEMP, WIDGET_PADDING};
+use crate::theme::{TEXT_BATTERY, WIDGET_PADDING};
 
 const BATTERY_LOW: &str = "󱃍";
 

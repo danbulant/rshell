@@ -6,16 +6,13 @@ use std::{
 
 use crate::{
     rt::tokio_runtime,
-    theme::{BG_DEFAULT, CORNER_RADIUS, TEXT_SPOTIFY, WIDGET_PADDING},
+    theme::{CORNER_RADIUS, TEXT_SPOTIFY, WIDGET_PADDING},
     vibrancy::Vibrancy,
 };
 use cushy::{
     figures::{units::Lp, Size, Zero},
     kludgine::{AnyTexture, LazyTexture},
-    styles::{
-        components::{TextColor, WidgetBackground},
-        Color, CornerRadii, Dimension, DimensionRange,
-    },
+    styles::{components::TextColor, Color, CornerRadii, Dimension, DimensionRange},
     value::{Destination, Dynamic, Source},
     widget::MakeWidget,
     widgets::{image::ImageCornerRadius, label::Displayable, Image},

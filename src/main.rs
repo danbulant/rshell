@@ -10,6 +10,7 @@ mod menu;
 pub mod rt;
 mod theme;
 mod vibrancy;
+pub mod widgets;
 
 fn main() -> cushy::Result {
     let args = Args::parse();
@@ -19,11 +20,7 @@ fn main() -> cushy::Result {
         Commands::Bar => start_bar(app).unwrap(),
         Commands::Menu => start_menu(app).unwrap(),
         Commands::Power => {
-            let win = "Hello world!".open(app).unwrap();
-            // std::thread::spawn(move || {
-            //     std::thread::sleep(std::time::Duration::from_secs(2));
-            //     win.request_close();
-            // });
+            "Hello world!".open(app).unwrap();
         }
     });
 

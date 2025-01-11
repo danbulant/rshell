@@ -1,13 +1,13 @@
 use chrono::{Local, Timelike};
 use cushy::{
-    styles::components::{TextColor, WidgetBackground},
+    styles::components::TextColor,
     value::{Destination, Dynamic, MapEach},
     widget::MakeWidget,
 };
 
 use crate::{
     rt::tokio_runtime,
-    theme::{BG_DEFAULT, TEXT_CLOCK, WIDGET_PADDING},
+    theme::{TEXT_CLOCK, WIDGET_PADDING},
 };
 
 const FORMAT: &'static str = "  %H:%M %p 󰃭  %a %d ";

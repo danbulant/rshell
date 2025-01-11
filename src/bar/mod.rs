@@ -8,16 +8,18 @@ use cushy::{
     styles::{
         components::{
             BaseLineHeight, BaseTextSize, CornerRadius, DefaultBackgroundColor, FontWeight,
-            WidgetBackground,
         },
         FontFamilyList,
     },
-    value::{Dynamic, Source},
+    value::Dynamic,
     widget::MakeWidget,
     Application, Open,
 };
 
-use crate::theme::{BG_DEFAULT, CORNER_RADIUS, DEFAULT_FONT_WEIGHT, TEXT_FONT, TEXT_SIZE};
+use crate::{
+    theme::{BG_DEFAULT, CORNER_RADIUS, DEFAULT_FONT_WEIGHT, TEXT_FONT, TEXT_SIZE},
+    widgets::WidgetExt,
+};
 
 mod battery;
 mod spotify;
@@ -29,27 +31,13 @@ pub fn start_bar(app: &mut impl Application) -> cushy::Result {
     monitor_size.height = UPx::new(40);
     monitor_size.width = UPx::new((monitor_size.width.get() as f64 / 1.25) as _);
     let size = Dynamic::new(monitor_size);
-    let mut window = ((time::time_widget()
-        .expand_vertically()
-        .with(&WidgetBackground, BG_DEFAULT)
-        .pad())
-    .and(
-        spotify::spotify_controls()
-            .expand_vertically()
-            .with(&WidgetBackground, BG_DEFAULT)
-            .pad(),
-    )
+    let mut window = ((time::time_widget().bar_pill())
+        .and(spotify::spotify_controls().bar_pill())
+        .into_columns()
+        .centered()
+        .expand_horizontally())
+    .and(battery().bar_pill())
     .into_columns()
-    .centered()
-    .expand_horizontally())
-    .and(
-        battery()
-            .expand_vertically()
-            .with(&WidgetBackground, BG_DEFAULT)
-            .pad(),
-    )
-    .into_columns()
-    .centered()
     .expand_horizontally()
     .width(monitor_size.width)
     .height(Lp::points(30))
